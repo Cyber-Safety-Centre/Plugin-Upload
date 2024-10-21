@@ -203,8 +203,7 @@ function validateDockerfile(dockerfilePath) {
 
 function buildDockerImage(contextPath, imageName) {
     return new Promise((resolve, reject) => {
-        exec(`docker build -t ${imageName}
-            ${contextPath}`, (error, stdout, stderr) => {
+        exec(`docker build -t ${imageName} ${contextPath}`, (error, stdout, stderr) => {
             if (error) {
                 console.error(`Error building Docker image: ${stderr}`);
                 return reject(error);
