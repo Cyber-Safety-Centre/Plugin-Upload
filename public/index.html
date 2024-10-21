@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Docker File Uploader</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f0f0f0;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+      .container {
+        background-color: #fff;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        width: 400px;
+        text-align: center;
+      }
+      .container h1 {
+        font-size: 24px;
+        margin-bottom: 20px;
+      }
+      input[type="file"] {
+        margin-bottom: 20px;
+      }
+      .btn {
+        background-color: #28a745;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .btn:hover {
+        background-color: #218838;
+      }
+      #result {
+        margin-top: 20px;
+        padding: 10px;
+        display: none;
+        border-radius: 5px;
+      }
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+      .options {
+        display: none;
+        background-color: #fff;
+        padding: 10px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        justify-content: center;
+        display: none;
+        flex: auto;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .val-btn {
+        background-color: #28a745;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .val-btn:hover {
+        background-color: #218838;
+      }
+      .buil-btn {
+        display: none;
+        background-color: #28a745;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .buil-btn:hover {
+        background-color: #218838;
+      }
+      .push-btn {
+        display: none;
+        background-color: #28a745;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .push-btn:hover {
+        background-color: #218838;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Upload Your Code (.zip)</h1>
+      <form id="uploadForm">
+        <input type="file" id="fileInput" accept=".zip" required />
+        <button type="submit" class="btn">Upload</button>
+      </form>
+      <div id="options" class="options">
+        <button id="validation" type="button" class="val-btn">Validate</button>
+        <button id="building" type="button" class="buil-btn">
+          Build Image
+        </button>
+        <button id="pushing" type="button" class="push-btn">
+          Push Image To GitHub
+        </button>
+      </div>
+      <div id="result"></div>
+    </div>
+
+    <script>
+      const uploadForm = document.getElementById("uploadForm");
+      const fileInput = document.getElementById("fileInput");
+      const optionsDiv = document.getElementById("options");
+      const resultDiv = document.getElementById("result");
+      const validateBtn = document.getElementById("validation");
+      const buildBtn = document.getElementById("building");
+      const pushBtn = document.getElementById("pushing");
+
+      let dirPath = "";
+      let dockerPath = "";
+      let dockerImage = "";
+
+      uploadForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const file = fileInput.files[0];
+        if (!file) {
+          alert("Please choose a file.");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+          resultDiv.style.display = "none";
+
+          const response = await fetch("/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          const result = await response.json();
+
+          resultDiv.style.display = "block";
+
+          if (response.ok) {
+            resultDiv.classList.add("success");
+            resultDiv.classList.remove("error");
+            resultDiv.textContent =
+              "Success: " + result.message || "File Uploaded!";
+            optionsDiv.style.display = "block";
+            dirPath = result.path;
+            console.log(dirPath);
+          } else {
+            resultDiv.classList.add("error");
+            resultDiv.classList.remove("success");
+            resultDiv.textContent = "Error: " + result.message;
+          }
+        } catch (error) {
+          resultDiv.classList.add("error");
+          resultDiv.classList.remove("success");
+          resultDiv.style.display = "block";
+          resultDiv.textContent = "Error uploading file: " + error.message;
+        }
+      });
+
+      validateBtn.addEventListener("click", async () => {
+        try {
+          resultDiv.style.display = "none";
+
+          const response = await fetch("/validate", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ dirName: dirPath }),
+          });
+
+          const result = await response.json();
+
+          resultDiv.style.display = "block";
+
+          if (response.ok) {
+            resultDiv.classList.add("success");
+            resultDiv.classList.remove("error");
+            resultDiv.textContent =
+              "Success: " + result.message ||
+              "Docker image Validated successfully!";
+            dockerPath = result.pathName;
+            console.log(dockerPath);
+            buildBtn.style.display = "block";
+          } else {
+            resultDiv.classList.add("error");
+            resultDiv.classList.remove("success");
+            resultDiv.textContent = "Error: " + result.message;
+          }
+        } catch (error) {
+          resultDiv.classList.add("error");
+          resultDiv.classList.remove("success");
+          resultDiv.style.display = "block";
+          resultDiv.textContent = "Error validating docker: " + error.message;
+        }
+      });
+
+      buildBtn.addEventListener("click", async () => {
+        try {
+          resultDiv.style.display = "none";
+
+          const response = await fetch("/build", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ dirName: dockerPath }),
+          });
+
+          const result = await response.json();
+
+          resultDiv.style.display = "block";
+
+          if (response.ok) {
+            resultDiv.classList.add("success");
+            resultDiv.classList.remove("error");
+            resultDiv.textContent =
+              "Success: " + result.message ||
+              "Docker image build successfully!";
+            dockerImage = result.imageName;
+            console.log(dockerImage);
+            pushBtn.style.display = "block";
+          } else {
+            resultDiv.classList.add("error");
+            resultDiv.classList.remove("success");
+            resultDiv.textContent = "Error: " + result.message;
+          }
+        } catch (error) {
+          resultDiv.classList.add("error");
+          resultDiv.classList.remove("success");
+          resultDiv.style.display = "block";
+          resultDiv.textContent = "Error building image: " + error.message;
+        }
+      });
+
+      pushBtn.addEventListener("click", async () => {
+        try {
+          resultDiv.style.display = "none";
+
+          const response = await fetch("/push", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ imageName: dockerImage }),
+          });
+
+          const result = await response.json();
+
+          resultDiv.style.display = "block";
+
+          if (response.ok) {
+            resultDiv.classList.add("success");
+            resultDiv.classList.remove("error");
+            resultDiv.textContent =
+              "Success: " + result.message ||
+              "Docker image Pushed to github successfully!";
+            pushBtn.style.display = "block";
+          } else {
+            resultDiv.classList.add("error");
+            resultDiv.classList.remove("success");
+            resultDiv.textContent = "Error: " + result.message;
+          }
+        } catch (error) {
+          resultDiv.classList.add("error");
+          resultDiv.classList.remove("success");
+          resultDiv.style.display = "block";
+          resultDiv.textContent = "Error pushing image: " + error.message;
+        }
+      });
+    </script>
+  </body>
+</html>
